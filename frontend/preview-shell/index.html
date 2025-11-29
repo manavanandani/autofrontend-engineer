@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoFrontend Engineer | Mission Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+            }
+        }
+
+        .agent-step {
+            transition: all 0.3s ease;
+        }
+
+        .agent-step.active {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.5);
+            animation: pulse-glow 1.5s ease-in-out infinite;
+        }
+
+        .agent-step.completed {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.3);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-950 text-slate-200 h-screen flex overflow-hidden font-sans">
+
+    <!-- Sidebar -->
+    <aside class="w-80 bg-slate-900 border-r border-slate-800 flex flex-col">
+        <div class="p-6 border-b border-slate-800">
+            <h1
+                class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent flex items-center gap-2">
+                <i data-lucide="cpu" class="w-6 h-6 text-blue-400"></i>
+                AutoFrontend
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">Autonomous Engineering System V2</p>
+        </div>
+
+        <div class="p-4 border-b border-slate-800 space-y-2">
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-500">Total Runs</span>
+                <span class="font-semibold text-blue-400" id="total-runs">0</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-500">Success Rate</span>
+                <span class="font-semibold text-green-400" id="success-rate">100%</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span class="text-slate-500">Model</span>
+                <span class="font-mono text-[10px] text-purple-400">GPT-4o</span>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4" id="runs-container">
+            <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <i data-lucide="history" class="w-3 h-3"></i> Recent Runs
+            </div>
+            <div id="runs-list" class="space-y-3">
+                <!-- Runs will be loaded here -->
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="openNewRunModal()"
+                class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 shadow-lg">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> New Run
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col bg-slate-950 relative">
+        <header
+            class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/50 backdrop-blur-sm">
+            <div class="flex items-center gap-4">
+                <h2 id="current-run-title" class="text-lg font-semibold text-white">Select a Run</h2>
+                <span id="current-run-id"
+                    class="text-xs font-mono text-slate-500 px-2 py-1 bg-slate-800 rounded"></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="workflow-btn" onclick="toggleWorkflow()"
+                    class="text-sm text-slate-400 hover:text-white flex items-center gap-2 px-3 py-1.5 rounded hover:bg-slate-800 transition-colors">
+                    <i data-lucide="git-branch" class="w-4 h-4"></i> Workflow
+                </button>
+                <a id="code-link" href="#" target="_blank"
+                    class="hidden text-sm text-slate-400 hover:text-white flex items-center gap-2 px-3 py-1.5 rounded hover:bg-slate-800 transition-colors">
+                    <i data-lucide="code" class="w-4 h-4"></i> Code
+                </a>
+                <a id="docs-link" href="#" target="_blank"
+                    class="hidden text-sm text-slate-400 hover:text-white flex items-center gap-2 px-3 py-1.5 rounded hover:bg-slate-800 transition-colors">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> Docs
+                </a>
+                <div class="h-4 w-px bg-slate-700 mx-2"></div>
+                <div class="flex items-center gap-2 text-xs" id="system-status">
+                    <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                    <span class="text-slate-500">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Workflow Panel -->
+            <div id="workflow-panel" class="w-80 border-r border-slate-800 bg-slate-900/30 p-4 overflow-y-auto hidden">
+                <h3 class="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+                    <i data-lucide="workflow" class="w-4 h-4 text-blue-400"></i>
+                    Agent Pipeline
+                </h3>
+
+                <div class="space-y-2" id="agent-steps">
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30"
+                        data-agent="clarifier">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-blue-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Requirement Clarifier</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Structures user input into JSON spec</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30" data-agent="planner">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="list-checks" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Planning Agent</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Creates implementation steps</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30"
+                        data-agent="ui_architect">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="palette" class="w-3.5 h-3.5 text-pink-400"></i>
+                            <span class="text-xs font-medium text-slate-300">UI Architect</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Designs component tree & Tailwind</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30" data-agent="coder">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="code-2" class="w-3.5 h-3.5 text-green-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Coding Agent</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Writes React + TypeScript code</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30" data-agent="tester">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="flask-conical" class="w-3.5 h-3.5 text-yellow-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Test Generator</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Creates Jest + RTL tests</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30" data-agent="docs">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="book-open" class="w-3.5 h-3.5 text-orange-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Documentation Agent</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Writes Markdown docs</p>
+                    </div>
+
+                    <div class="agent-step p-3 rounded-lg border border-slate-700 bg-slate-800/30" data-agent="preview">
+                        <div class="flex items-center gap-2 mb-1">
+                            <i data-lucide="monitor" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            <span class="text-xs font-medium text-slate-300">Preview Agent</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Generates HTML preview</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Area -->
+            <div class="flex-1 p-6 overflow-hidden relative">
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                    <i data-lucide="layout" class="w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="text-lg font-medium mb-2">No Component Selected</p>
+                    <p class="text-sm text-slate-600">Select a run from the sidebar or create a new component</p>
+                    <button onclick="openNewRunModal()"
+                        class="mt-6 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Create New Component
+                    </button>
+                </div>
+
+                <iframe id="preview-frame"
+                    class="w-full h-full rounded-xl border border-slate-800 bg-white shadow-2xl hidden"></iframe>
+            </div>
+        </div>
+    </main>
+
+    <!-- New Run Modal -->
+    <div id="new-run-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-2xl rounded-xl p-6 shadow-2xl transform scale-95 transition-transform duration-300"
+            id="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-blue-400"></i> Start New Run
+                </h3>
+                <button onclick="closeNewRunModal()" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Describe your component</label>
+                    <textarea id="prompt-input" rows="4"
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none placeholder-slate-600"
+                        placeholder="e.g. Create a dark mode pricing table with 3 tiers and a toggle switch..."></textarea>
+                </div>
+
+                <div id="generation-status" class="hidden bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="loader-2" class="w-5 h-5 text-blue-400 spinner"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-blue-300" id="status-text">Generating component...</p>
+                            <p class="text-xs text-slate-400 mt-1" id="status-detail">This may take 30-60 seconds</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="generate-btn" onclick="generateComponent()"
+                    class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Component
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const API_BASE = 'http://localhost:5001/api';
+        let workflowVisible = false;
+
+        // Check server health on load
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                document.getElementById('system-status').innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="text-slate-400">System Ready</span>
+                `;
+            } catch (error) {
+                document.getElementById('system-status').innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span class="text-red-400">Server Offline</span>
+                `;
+            }
+        }
+
+        // Load all runs
+        async function loadRuns() {
+            try {
+                const response = await fetch(`${API_BASE}/runs`);
+                const data = await response.json();
+                const runsList = document.getElementById('runs-list');
+
+                if (data.runs.length === 0) {
+                    runsList.innerHTML = '<p class="text-xs text-slate-600 text-center py-4">No runs yet. Create your first component!</p>';
+                    return;
+                }
+
+                document.getElementById('total-runs').textContent = data.runs.length;
+
+                runsList.innerHTML = data.runs.map(run => `
+                    <button onclick='loadRun("${run.run_id}", "${run.component_name}")' 
+                        class="w-full text-left p-3 rounded-lg bg-slate-800/50 hover:bg-slate-800 border border-transparent hover:border-purple-500/50 transition-all group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-medium text-slate-200 group-hover:text-purple-400 transition-colors text-sm">${run.component_name}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1">
+                                <i data-lucide="check" class="w-2.5 h-2.5"></i> Success
+                            </span>
+                        </div>
+                        <div class="text-xs text-slate-500 flex items-center gap-2">
+                            <i data-lucide="clock" class="w-3 h-3"></i>
+                            <span>${new Date(run.timestamp).toLocaleString()}</span>
+                        </div>
+                    </button>
+                `).join('');
+
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Failed to load runs:', error);
+            }
+        }
+
+        function toggleWorkflow() {
+            const panel = document.getElementById('workflow-panel');
+            workflowVisible = !workflowVisible;
+            panel.classList.toggle('hidden', !workflowVisible);
+        }
+
+        function loadRun(runId, componentName) {
+            const frame = document.getElementById('preview-frame');
+            const empty = document.getElementById('empty-state');
+            const titleEl = document.getElementById('current-run-title');
+            const idEl = document.getElementById('current-run-id');
+            const codeLink = document.getElementById('code-link');
+            const docsLink = document.getElementById('docs-link');
+
+            titleEl.textContent = componentName;
+            idEl.textContent = runId;
+
+            const basePath = `../../workspaces/${runId}`;
+            codeLink.href = `${basePath}/src/components/${componentName}.tsx`;
+            codeLink.classList.remove('hidden');
+            docsLink.href = `${basePath}/docs/${componentName}.md`;
+            docsLink.classList.remove('hidden');
+
+            frame.src = `${basePath}/preview/index.html`;
+            frame.classList.remove('hidden');
+            empty.classList.add('hidden');
+        }
+
+        async function generateComponent() {
+            const prompt = document.getElementById('prompt-input').value.trim();
+            if (!prompt) {
+                alert('Please describe your component');
+                return;
+            }
+
+            const statusDiv = document.getElementById('generation-status');
+            const generateBtn = document.getElementById('generate-btn');
+            const statusText = document.getElementById('status-text');
+            const statusDetail = document.getElementById('status-detail');
+
+            statusDiv.classList.remove('hidden');
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 spinner"></i> Generating...';
+            lucide.createIcons();
+
+            try {
+                // Start generation
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Generation failed');
+                }
+
+                const runId = data.run_id;
+
+                // Connect to progress stream
+                const eventSource = new EventSource(`${API_BASE}/progress/${runId}`);
+
+                // Show workflow panel
+                if (!workflowVisible) {
+                    toggleWorkflow();
+                }
+
+                // Reset agent steps
+                document.querySelectorAll('.agent-step').forEach(step => {
+                    step.classList.remove('active', 'completed');
+                });
+
+                eventSource.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+
+                    if (msg.type === 'status') {
+                        statusText.textContent = msg.message;
+                        statusDetail.textContent = `Agent: ${msg.agent}`;
+
+                        // Animate agent steps
+                        const agentMap = {
+                            'init': 'clarifier',
+                            'clarifier': 'clarifier',
+                            'planner': 'planner',
+                            'ui_architect': 'ui_architect',
+                            'coder': 'coder',
+                            'tester': 'tester',
+                            'docs': 'docs',
+                            'preview': 'preview'
+                        };
+
+                        const agentStep = document.querySelector(`[data-agent="${agentMap[msg.agent]}"]`);
+                        if (agentStep) {
+                            // Mark previous as completed
+                            document.querySelectorAll('.agent-step.active').forEach(s => {
+                                s.classList.remove('active');
+                                s.classList.add('completed');
+                            });
+                            // Mark current as active
+                            agentStep.classList.add('active');
+                        }
+                    }
+                    else if (msg.type === 'complete') {
+                        eventSource.close();
+
+                        // Mark all as completed
+                        document.querySelectorAll('.agent-step').forEach(step => {
+                            step.classList.remove('active');
+                            step.classList.add('completed');
+                        });
+
+                        statusText.textContent = '✅ Component generated successfully!';
+                        statusDetail.textContent = `Component: ${msg.component_name}`;
+
+                        setTimeout(() => {
+                            closeNewRunModal();
+                            loadRuns();
+                            loadRun(msg.run_id, msg.component_name);
+                        }, 1500);
+                    }
+                    else if (msg.type === 'error') {
+                        eventSource.close();
+                        throw new Error(msg.message);
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                };
+
+            } catch (error) {
+                alert('Generation failed: ' + error.message);
+                statusDiv.classList.add('hidden');
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i> Generate Component';
+                lucide.createIcons();
+            }
+        }
+
+        function openNewRunModal() {
+            const modal = document.getElementById('new-run-modal');
+            const content = document.getElementById('modal-content');
+            document.getElementById('prompt-input').value = '';
+            document.getElementById('generation-status').classList.add('hidden');
+            document.getElementById('generate-btn').disabled = false;
+            document.getElementById('generate-btn').innerHTML = '<i data-lucide="sparkles" class="w-4 h-4"></i> Generate Component';
+            lucide.createIcons();
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeNewRunModal() {
+            const modal = document.getElementById('new-run-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // Initialize
+        checkHealth();
+        loadRuns();
+        setInterval(checkHealth, 30000); // Check health every 30s
+    </script>
+</body>
+
+</html>
